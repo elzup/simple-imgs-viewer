@@ -56,34 +56,68 @@
           </svg>
         </button>
       </div>
-      <div class="flex items-center space-x-4 mb-6">
-        <span class="text-sm font-medium text-gray-900 dark:text-white"
-          >フィルター:</span
-        >
-        <div class="flex items-center">
-          <input
-            id="filter-url"
-            type="checkbox"
-            checked
-            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-          />
-          <label
-            for="filter-url"
-            class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-            >URL</label
+      <div class="flex flex-wrap items-center justify-between gap-y-4 mb-6">
+        <div class="flex items-center space-x-4">
+          <span class="text-sm font-medium text-gray-900 dark:text-white"
+            >フィルター:</span
           >
+          <div class="flex items-center">
+            <input
+              id="filter-url"
+              type="checkbox"
+              checked
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label
+              for="filter-url"
+              class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >URL</label
+            >
+          </div>
+          <div class="flex items-center">
+            <input
+              id="filter-file"
+              type="checkbox"
+              checked
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label
+              for="filter-file"
+              class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >File</label
+            >
+          </div>
+          <div class="flex items-center">
+            <input
+              id="filter-square"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label
+              for="filter-square"
+              class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >正方形のみ</label
+            >
+          </div>
         </div>
-        <div class="flex items-center">
-          <input
-            id="filter-file"
-            type="checkbox"
-            checked
-            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-          />
+        <div class="flex items-center space-x-2">
           <label
-            for="filter-file"
-            class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
-            >File</label
+            for="grid-size-slider"
+            class="text-sm font-medium text-gray-900 dark:text-white"
+            >Grid:</label
+          >
+          <input
+            id="grid-size-slider"
+            type="range"
+            min="2"
+            max="20"
+            value="10"
+            class="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+          />
+          <span
+            id="grid-size-value"
+            class="text-sm font-medium text-gray-900 dark:text-white w-6 text-center"
+            >10</span
           >
         </div>
       </div>
@@ -106,13 +140,12 @@
           />
         </div>
       </div>
-      <div
-        id="grid"
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
-      ></div>
-      <nav class="flex justify-center mt-8">
+      <nav class="relative flex justify-center items-center mb-8 h-10">
+        <div id="prev-container" class="absolute left-0"></div>
         <ul id="pagination" class="flex items-center space-x-2"></ul>
+        <div id="next-container" class="absolute right-0"></div>
       </nav>
+      <div id="grid" class="grid gap-2"></div>
     </div>
 
     <!-- Image Modal -->
@@ -149,10 +182,10 @@
       </div>
     </div>
     <script>
-      const pageSize = 20
+      const pageSize = 1000
       let items = []
       let currentPage = 1
-      let activeFilters = { url: true, file: true }
+      let activeFilters = { url: true, file: true, squareOnly: false }
 
       // File Input Handling
       document
@@ -272,10 +305,37 @@
         currentPage = 1
         render()
       })
+      document
+        .getElementById('filter-square')
+        .addEventListener('change', (e) => {
+          activeFilters.squareOnly = e.target.checked
+          // Re-render current page to apply/remove display filter
+          render()
+        })
+
+      // --- Grid Size Control ---
+      const grid = document.getElementById('grid')
+      const gridSizeSlider = document.getElementById('grid-size-slider')
+      const gridSizeValue = document.getElementById('grid-size-value')
+      const defaultGridCols = 10
+
+      function setGridColumns(cols) {
+        grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`
+        gridSizeValue.textContent = cols
+        gridSizeSlider.value = cols
+        localStorage.setItem('grid-cols', cols)
+      }
+
+      gridSizeSlider.addEventListener('input', (e) => {
+        setGridColumns(e.target.value)
+      })
+
+      // Initialize grid size
+      const savedGridCols = localStorage.getItem('grid-cols') || defaultGridCols
+      setGridColumns(savedGridCols)
 
       // --- Rendering ---
       function render() {
-        const grid = document.getElementById('grid')
         grid.innerHTML = ''
 
         const filteredItems = items.filter((item) => activeFilters[item.type])
@@ -286,32 +346,56 @@
 
         pageItems.forEach((item) => {
           const cardContainer = document.createElement('div')
-          cardContainer.className = 'group cursor-pointer'
+          cardContainer.className =
+            'group cursor-pointer relative aspect-square'
           cardContainer.addEventListener('click', () => openModal(item.src))
           const card = document.createElement('div')
           card.className =
-            'bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden h-full flex flex-col transition-transform duration-200 group-hover:scale-105'
+            'bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden h-full w-full flex flex-col transition-transform duration-200 group-hover:scale-105'
           const img = document.createElement('img')
           img.src = item.src
           img.alt = item.title
           img.loading = 'lazy'
-          img.className = 'w-full h-48 object-cover'
+          img.className = 'w-full h-full object-cover'
 
           const placeholder = document.createElement('div')
           placeholder.className =
-            'w-full h-48 bg-gray-100 dark:bg-gray-700 hidden items-center justify-center'
-          placeholder.innerHTML = `<svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6l.01.01"></path></svg>`
+            'w-full h-full bg-gray-100 dark:bg-gray-700 hidden items-center justify-center'
+          placeholder.innerHTML = `<svg class="w-1/3 h-1/3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6l.01.01"></path></svg>`
 
           img.onerror = () => {
             img.style.display = 'none'
             placeholder.style.display = 'flex'
           }
 
+          img.onload = () => {
+            const isSquare =
+              img.naturalWidth > 0 && img.naturalWidth === img.naturalHeight
+
+            if (activeFilters.squareOnly) {
+              // If filter is on, hide non-square images
+              if (!isSquare) {
+                cardContainer.style.display = 'none'
+              }
+            } else {
+              // If filter is off, show star marker on square images
+              if (isSquare) {
+                const squareMark = document.createElement('div')
+                squareMark.className =
+                  'absolute top-1.5 right-1.5 text-yellow-400 drop-shadow-lg'
+                squareMark.title = '正方形の画像'
+                squareMark.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.007z" clip-rule="evenodd" /></svg>`
+                cardContainer.appendChild(squareMark)
+              }
+            }
+          }
+
           const cardBody = document.createElement('div')
-          cardBody.className = 'p-2 flex-grow'
+          cardBody.className =
+            'absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent pointer-events-none'
 
           const titleDiv = document.createElement('div')
-          titleDiv.className = 'font-semibold text-sm truncate'
+          titleDiv.className = 'font-semibold text-sm text-white truncate'
           titleDiv.title = item.title
           titleDiv.textContent = item.title
 
@@ -325,37 +409,94 @@
         renderPagination(filteredItems.length)
       }
 
-      function renderPagination(totalItems) {
+      function createPageLink(page, options = {}) {
+        const { isActive = false, isDisabled = false, text = null } = options
+
+        const li = document.createElement('li')
+        const a = document.createElement('a')
+        a.href = '#'
+        a.innerHTML = text || page
+
+        const baseClasses =
+          'block px-3 py-1.5 rounded-md text-sm font-medium transition-colors'
+        const activeClasses = 'bg-blue-600 text-white cursor-default'
+        const inactiveClasses =
+          'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+        const disabledClasses =
+          'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700'
+
+        if (isActive) {
+          a.className = `${baseClasses} ${activeClasses}`
+        } else if (isDisabled) {
+          a.className = `${baseClasses} ${disabledClasses}`
+        } else {
+          a.className = `${baseClasses} ${inactiveClasses}`
+        }
+
+        if (isActive || isDisabled) {
+          a.addEventListener('click', (e) => e.preventDefault())
+        } else {
+          a.addEventListener('click', (e) => {
+            e.preventDefault()
+            currentPage = page
+            render()
+          })
+        }
+        li.appendChild(a)
+        return li
+      }
+
+      function renderPagination(totalItems, pageWindow = 1) {
         const totalPages = Math.ceil(totalItems / pageSize)
-        const pagination = document.getElementById('pagination')
-        pagination.innerHTML = ''
+        const paginationList = document.getElementById('pagination')
+        const prevContainer = document.getElementById('prev-container')
+        const nextContainer = document.getElementById('next-container')
+        paginationList.innerHTML = ''
+        prevContainer.innerHTML = ''
+        nextContainer.innerHTML = ''
         if (totalPages <= 1) return
 
-        for (let i = 1; i <= totalPages; i++) {
-          const li = document.createElement('li')
-          const isActive = i === currentPage
+        const pagesToShow = new Set()
+        pagesToShow.add(1)
+        pagesToShow.add(totalPages)
 
-          const baseClasses =
-            'px-3 py-1.5 rounded-md text-sm font-medium transition-colors'
-          const activeClasses = 'bg-blue-600 text-white cursor-default'
-          const inactiveClasses =
-            'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
-
-          li.innerHTML = `<a href="#" class="${baseClasses} ${
-            isActive ? activeClasses : inactiveClasses
-          }">${i}</a>`
-
-          if (!isActive) {
-            li.addEventListener('click', (e) => {
-              e.preventDefault()
-              currentPage = i
-              render()
-            })
-          } else {
-            li.addEventListener('click', (e) => e.preventDefault())
-          }
-          pagination.appendChild(li)
+        for (let i = 0; i <= pageWindow; i++) {
+          if (currentPage - i > 0) pagesToShow.add(currentPage - i)
+          if (currentPage + i <= totalPages) pagesToShow.add(currentPage + i)
         }
+
+        const sortedPages = Array.from(pagesToShow).sort((a, b) => a - b)
+
+        let lastPage = 0
+        for (const page of sortedPages) {
+          if (lastPage !== 0 && page - lastPage > 1) {
+            const ellipsis = document.createElement('li')
+            ellipsis.className =
+              'px-1.5 py-1.5 text-gray-500 dark:text-gray-400'
+            ellipsis.textContent = '...'
+            paginationList.appendChild(ellipsis)
+          }
+          paginationList.appendChild(
+            createPageLink(page, { isActive: page === currentPage })
+          )
+          lastPage = page
+        }
+
+        // Previous Button
+        prevContainer.appendChild(
+          createPageLink(currentPage - 1, {
+            text: '前へ',
+            isDisabled: currentPage === 1,
+          })
+        )
+
+        // Next Button
+        nextContainer.appendChild(
+          createPageLink(currentPage + 1, {
+            text: '次へ',
+            isDisabled: currentPage === totalPages,
+          })
+        )
       }
     </script>
   </body>
