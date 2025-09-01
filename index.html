@@ -212,8 +212,6 @@
                 const isUrl =
                   path.startsWith('http://') || path.startsWith('https://')
                 const type = isUrl ? 'url' : 'file'
-                // For local files, prepend file:// to create a valid file URL.
-                // This requires the HTML file to be opened directly (file:// protocol).
                 const src = isUrl ? path : `file://${path}`
                 const title = path.split(/[\\/]/).pop() || path
                 return { src: src, title, type }

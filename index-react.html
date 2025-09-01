@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Simple Images Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+      // テーマ初期化
+      if (
+        localStorage.getItem('color-theme') === 'dark' ||
+        (!('color-theme' in localStorage) &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    </script>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useCallback } = React
+
+      // テーマトグルボタンコンポーネント
+      const ThemeToggle = () => {
+        const [isDark, setIsDark] = useState(
+          document.documentElement.classList.contains('dark')
+        )
+
+        const toggleTheme = () => {
+          const newTheme = !isDark
+          setIsDark(newTheme)
+
+          if (newTheme) {
+            document.documentElement.classList.add('dark')
+            localStorage.setItem('color-theme', 'dark')
+          } else {
+            document.documentElement.classList.remove('dark')
+            localStorage.setItem('color-theme', 'light')
+          }
+        }
+
+        return (
+          <button
+            onClick={toggleTheme}
+            type="button"
+            className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm p-2.5"
+          >
+            {isDark ? (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z"
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
+            )}
+          </button>
+        )
+      }
+
+      // フィルターコンポーネント
+      const FilterControls = ({ filters, onFilterChange }) => {
+        return (
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              フィルター:
+            </span>
+            <div className="flex items-center">
+              <input
+                id="filter-url"
+                type="checkbox"
+                checked={filters.url}
+                onChange={(e) => onFilterChange('url', e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <label
+                htmlFor="filter-url"
+                className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >
+                URL
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                id="filter-file"
+                type="checkbox"
+                checked={filters.file}
+                onChange={(e) => onFilterChange('file', e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <label
+                htmlFor="filter-file"
+                className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >
+                File
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                id="filter-square"
+                type="checkbox"
+                checked={filters.squareOnly}
+                onChange={(e) => onFilterChange('squareOnly', e.target.checked)}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+              />
+              <label
+                htmlFor="filter-square"
+                className="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >
+                正方形のみ
+              </label>
+            </div>
+          </div>
+        )
+      }
+
+      // グリッドサイズコントロール
+      const GridSizeControl = ({ gridSize, onGridSizeChange }) => {
+        return (
+          <div className="flex items-center space-x-2">
+            <label
+              htmlFor="grid-size-slider"
+              className="text-sm font-medium text-gray-900 dark:text-white"
+            >
+              Grid:
+            </label>
+            <input
+              id="grid-size-slider"
+              type="range"
+              min="2"
+              max="20"
+              value={gridSize}
+              onChange={(e) => onGridSizeChange(parseInt(e.target.value))}
+              className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+            />
+            <span className="text-sm font-medium text-gray-900 dark:text-white w-6 text-center">
+              {gridSize}
+            </span>
+          </div>
+        )
+      }
+
+      // ファイル入力コンポーネント
+      const FileInput = ({ onFileLoad, filename, onFilenameChange }) => {
+        const handleFileChange = (e) => {
+          const file = e.target.files[0]
+          if (!file) return
+
+          onFilenameChange(file.name)
+          const reader = new FileReader()
+          reader.onload = (evt) => {
+            const lines = evt.target.result
+              .split('\n')
+              .map((l) => l.trim())
+              .filter((l) => l)
+
+            const items = lines
+              .map((line) => {
+                if (!line) return null
+
+                const pathMatch = line.match(/https?:\/\/[^,\s"]+|\/[^,\s"]+/)
+                const path = pathMatch ? pathMatch[0] : line
+                const isUrl =
+                  path.startsWith('http://') || path.startsWith('https://')
+                const type = isUrl ? 'url' : 'file'
+                const src = isUrl ? path : `file://${path}`
+                const title = path.split(/[\\/]/).pop() || path
+                return { src, title, type }
+              })
+              .filter(Boolean)
+
+            onFileLoad(items)
+          }
+          reader.readAsText(file)
+        }
+
+        return (
+          <div className="flex flex-wrap md:flex-nowrap gap-4 mb-6">
+            <div className="w-full md:w-2/3">
+              <input
+                type="file"
+                onChange={handleFileChange}
+                className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                accept=".txt,.csv,.tsv,.log,text/plain,text/csv"
+              />
+            </div>
+            <div className="w-full md:w-1/3">
+              <input
+                type="text"
+                value={filename}
+                onChange={(e) => onFilenameChange(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                placeholder="ファイル名 (任意)"
+              />
+            </div>
+          </div>
+        )
+      }
+
+      // 画像カードコンポーネント
+      const ImageCard = ({ item, onImageClick, filters }) => {
+        const [isSquare, setIsSquare] = useState(false)
+        const [imageError, setImageError] = useState(false)
+
+        const handleImageLoad = (e) => {
+          const img = e.target
+          const square =
+            img.naturalWidth > 0 && img.naturalWidth === img.naturalHeight
+          setIsSquare(square)
+        }
+
+        const handleImageError = () => {
+          setImageError(true)
+        }
+
+        // 正方形フィルターが有効で、画像が正方形でない場合は非表示
+        if (filters.squareOnly && !isSquare) {
+          return null
+        }
+
+        return (
+          <div
+            className="group cursor-pointer relative aspect-square"
+            onClick={() => onImageClick(item.src)}
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden h-full w-full flex flex-col transition-transform duration-200 group-hover:scale-105">
+              {!imageError ? (
+                <img
+                  src={item.src}
+                  alt={item.title}
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                  onLoad={handleImageLoad}
+                  onError={handleImageError}
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <svg
+                    className="w-1/3 h-1/3 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6l.01.01"
+                    />
+                  </svg>
+                </div>
+              )}
+
+              {/* 正方形マーカー */}
+              {isSquare && !filters.squareOnly && (
+                <div
+                  className="absolute top-1.5 right-1.5 text-yellow-400 drop-shadow-lg"
+                  title="正方形の画像"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.007z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              )}
+
+              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent pointer-events-none">
+                <div
+                  className="font-semibold text-sm text-white truncate"
+                  title={item.title}
+                >
+                  {item.title}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      // ページネーションコンポーネント
+      const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+        if (totalPages <= 1) return null
+
+        const pageWindow = 1
+        const pagesToShow = new Set()
+        pagesToShow.add(1)
+        pagesToShow.add(totalPages)
+
+        for (let i = 0; i <= pageWindow; i++) {
+          if (currentPage - i > 0) pagesToShow.add(currentPage - i)
+          if (currentPage + i <= totalPages) pagesToShow.add(currentPage + i)
+        }
+
+        const sortedPages = Array.from(pagesToShow).sort((a, b) => a - b)
+
+        const PageLink = ({ page, isActive, isDisabled, text, onClick }) => {
+          const baseClasses =
+            'block px-3 py-1.5 rounded-md text-sm font-medium transition-colors'
+          const activeClasses = 'bg-blue-600 text-white cursor-default'
+          const inactiveClasses =
+            'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+          const disabledClasses =
+            'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700'
+
+          let className = baseClasses
+          if (isActive) className += ` ${activeClasses}`
+          else if (isDisabled) className += ` ${disabledClasses}`
+          else className += ` ${inactiveClasses}`
+
+          return (
+            <li>
+              <a
+                href="#"
+                className={className}
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (!isActive && !isDisabled && onClick) {
+                    onClick(page)
+                  }
+                }}
+              >
+                {text || page}
+              </a>
+            </li>
+          )
+        }
+
+        return (
+          <nav className="relative flex justify-center items-center mb-8 h-10">
+            <div className="absolute left-0">
+              <PageLink
+                page={currentPage - 1}
+                text="前へ"
+                isDisabled={currentPage === 1}
+                onClick={onPageChange}
+              />
+            </div>
+
+            <ul className="flex items-center space-x-2">
+              {sortedPages.map((page, index) => {
+                const prevPage = index > 0 ? sortedPages[index - 1] : 0
+                return (
+                  <React.Fragment key={page}>
+                    {prevPage !== 0 && page - prevPage > 1 && (
+                      <li className="px-1.5 py-1.5 text-gray-500 dark:text-gray-400">
+                        ...
+                      </li>
+                    )}
+                    <PageLink
+                      page={page}
+                      isActive={page === currentPage}
+                      onClick={onPageChange}
+                    />
+                  </React.Fragment>
+                )
+              })}
+            </ul>
+
+            <div className="absolute right-0">
+              <PageLink
+                page={currentPage + 1}
+                text="次へ"
+                isDisabled={currentPage === totalPages}
+                onClick={onPageChange}
+              />
+            </div>
+          </nav>
+        )
+      }
+
+      // 画像モーダルコンポーネント
+      const ImageModal = ({ isOpen, imageSrc, onClose }) => {
+        useEffect(() => {
+          const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+              onClose()
+            }
+          }
+
+          document.addEventListener('keydown', handleKeyDown)
+          return () => document.removeEventListener('keydown', handleKeyDown)
+        }, [isOpen, onClose])
+
+        if (!isOpen) return null
+
+        return (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 transition-opacity duration-300"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                onClose()
+              }
+            }}
+          >
+            <div className="relative">
+              <img
+                src={imageSrc}
+                alt="Enlarged image"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-xl"
+              />
+              <button
+                onClick={onClose}
+                className="absolute -top-4 -right-4 text-white bg-gray-800 bg-opacity-50 rounded-full p-1 hover:bg-opacity-75 transition-colors"
+              >
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )
+      }
+
+      // メインアプリケーションコンポーネント
+      const App = () => {
+        const [items, setItems] = useState([])
+        const [currentPage, setCurrentPage] = useState(1)
+        const [filters, setFilters] = useState({
+          url: true,
+          file: true,
+          squareOnly: false,
+        })
+        const [gridSize, setGridSize] = useState(() => {
+          return parseInt(localStorage.getItem('grid-cols')) || 10
+        })
+        const [filename, setFilename] = useState('urls.txt')
+        const [modalImage, setModalImage] = useState(null)
+
+        const pageSize = 1000
+
+        // グリッドサイズの変更
+        const handleGridSizeChange = useCallback((size) => {
+          setGridSize(size)
+          localStorage.setItem('grid-cols', size)
+        }, [])
+
+        // フィルターの変更
+        const handleFilterChange = useCallback((filterType, value) => {
+          setFilters((prev) => ({ ...prev, [filterType]: value }))
+          setCurrentPage(1)
+        }, [])
+
+        // ファイル読み込み
+        const handleFileLoad = useCallback((newItems) => {
+          setItems(newItems)
+          setCurrentPage(1)
+        }, [])
+
+        // 画像モーダル
+        const openModal = useCallback((src) => {
+          setModalImage(src)
+        }, [])
+
+        const closeModal = useCallback(() => {
+          setModalImage(null)
+        }, [])
+
+        // フィルタリングされたアイテム
+        const filteredItems = items.filter((item) => filters[item.type])
+
+        // ページネーション
+        const totalPages = Math.ceil(filteredItems.length / pageSize)
+        const start = (currentPage - 1) * pageSize
+        const pageItems = filteredItems.slice(start, start + pageSize)
+
+        return (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+            {/* ヘッダー */}
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                画像一覧
+              </h1>
+              <ThemeToggle />
+            </div>
+
+            {/* フィルターとグリッドコントロール */}
+            <div className="flex flex-wrap items-center justify-between gap-y-4 mb-6">
+              <FilterControls
+                filters={filters}
+                onFilterChange={handleFilterChange}
+              />
+              <GridSizeControl
+                gridSize={gridSize}
+                onGridSizeChange={handleGridSizeChange}
+              />
+            </div>
+
+            {/* ファイル入力 */}
+            <FileInput
+              onFileLoad={handleFileLoad}
+              filename={filename}
+              onFilenameChange={setFilename}
+            />
+
+            {/* ページネーション */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+
+            {/* 画像グリッド */}
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+              }}
+            >
+              {pageItems.map((item, index) => (
+                <ImageCard
+                  key={`${item.src}-${index}`}
+                  item={item}
+                  onImageClick={openModal}
+                  filters={filters}
+                />
+              ))}
+            </div>
+
+            {/* 画像モーダル */}
+            <ImageModal
+              isOpen={!!modalImage}
+              imageSrc={modalImage}
+              onClose={closeModal}
+            />
+          </div>
+        )
+      }
+
+      // アプリケーションをレンダリング
+      ReactDOM.render(<App />, document.getElementById('root'))
+    </script>
+  </body>
+</html>
