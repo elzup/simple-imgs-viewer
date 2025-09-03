@@ -1,0 +1,23 @@
+{
+  "name": "simple-imgs-viewer",
+  
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "gh-pages -d ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elzup/simple-imgs-viewer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/elzup/simple-imgs-viewer/issues"
+  },
+  "homepage": "https://elzup.github.io/simple-imgs-viewer",
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
+  }
+}
