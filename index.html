@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Simple Images Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+      if (
+        localStorage.getItem('color-theme') === 'dark' ||
+        (!('color-theme' in localStorage) &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    </script>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+      <div class="flex justify-between items-center mb-6">
+        <h1
+          class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white"
+        >
+          画像一覧
+        </h1>
+        <button
+          id="theme-toggle"
+          type="button"
+          class="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm p-2.5"
+        >
+          <svg
+            id="theme-toggle-dark-icon"
+            class="hidden w-5 h-5"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"
+            ></path>
+          </svg>
+          <svg
+            id="theme-toggle-light-icon"
+            class="hidden w-5 h-5"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z"
+              fill-rule="evenodd"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
+        </button>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-y-4 mb-6">
+        <div class="flex items-center space-x-4">
+          <span class="text-sm font-medium text-gray-900 dark:text-white"
+            >フィルター:</span
+          >
+          <div class="flex items-center">
+            <input
+              id="filter-url"
+              type="checkbox"
+              checked
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label
+              for="filter-url"
+              class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >URL</label
+            >
+          </div>
+          <div class="flex items-center">
+            <input
+              id="filter-file"
+              type="checkbox"
+              checked
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label
+              for="filter-file"
+              class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >File</label
+            >
+          </div>
+          <div class="flex items-center">
+            <input
+              id="filter-square"
+              type="checkbox"
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label
+              for="filter-square"
+              class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300"
+              >正方形のみ</label
+            >
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <label
+            for="grid-size-slider"
+            class="text-sm font-medium text-gray-900 dark:text-white"
+            >Grid:</label
+          >
+          <input
+            id="grid-size-slider"
+            type="range"
+            min="2"
+            max="20"
+            value="10"
+            class="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+          />
+          <span
+            id="grid-size-value"
+            class="text-sm font-medium text-gray-900 dark:text-white w-6 text-center"
+            >10</span
+          >
+        </div>
+      </div>
+      <div class="flex flex-wrap md:flex-nowrap gap-4 mb-6">
+        <div class="w-full md:w-2/3">
+          <input
+            type="file"
+            id="fileInput"
+            class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+            accept=".txt,.csv,.tsv,.log,text/plain,text/csv"
+          />
+        </div>
+        <div class="w-full md:w-1/3">
+          <input
+            type="text"
+            id="filenameInput"
+            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            placeholder="ファイル名 (任意)"
+            value="urls.txt"
+          />
+        </div>
+      </div>
+      <nav class="relative flex justify-center items-center mb-8 h-10">
+        <div id="prev-container" class="absolute left-0"></div>
+        <ul id="pagination" class="flex items-center space-x-2"></ul>
+        <div id="next-container" class="absolute right-0"></div>
+      </nav>
+      <div id="grid" class="grid gap-2"></div>
+    </div>
+
+    <!-- Image Modal -->
+    <div
+      id="imageModal"
+      class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50 p-4 transition-opacity duration-300"
+    >
+      <div class="relative">
+        <img
+          id="modalImage"
+          src=""
+          alt="Enlarged image"
+          class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-xl"
+        />
+        <button
+          id="closeModal"
+          class="absolute -top-4 -right-4 text-white bg-gray-800 bg-opacity-50 rounded-full p-1 hover:bg-opacity-75 transition-colors"
+        >
+          <svg
+            class="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <script>
+      const pageSize = 1000
+      let items = []
+      let currentPage = 1
+      let activeFilters = { url: true, file: true, squareOnly: false }
+
+      // File Input Handling
+      document
+        .getElementById('fileInput')
+        .addEventListener('change', function (e) {
+          const file = e.target.files[0]
+          if (!file) return
+          document.getElementById('filenameInput').value = file.name
+          const reader = new FileReader()
+          reader.onload = function (evt) {
+            const lines = evt.target.result
+              .split('\n')
+              .map((l) => l.trim())
+              .filter((l) => l)
+            items = lines
+              .map((line) => {
+                if (!line) return null
+
+                // Extract URL or absolute/relative file path from the line.
+                // 1. Try to find a URL or an absolute path embedded in the line (stops at comma/space/quote).
+                const pathMatch = line.match(/https?:\/\/[^,\s"]+|\/[^,\s"]+/)
+                // 2. If not found, assume the whole line is the path (for relative paths like "img/foo.png").
+                const path = pathMatch ? pathMatch[0] : line
+                const isUrl =
+                  path.startsWith('http://') || path.startsWith('https://')
+                const type = isUrl ? 'url' : 'file'
+                const src = isUrl ? path : `file://${path}`
+                const title = path.split(/[\\/]/).pop() || path
+                return { src: src, title, type }
+              })
+              .filter(Boolean) // nullを除外
+            currentPage = 1
+            render()
+          }
+          reader.readAsText(file)
+        })
+
+      // --- Theme (Dark/Light Mode) ---
+      const themeToggleBtn = document.getElementById('theme-toggle')
+      const themeToggleDarkIcon = document.getElementById(
+        'theme-toggle-dark-icon'
+      )
+      const themeToggleLightIcon = document.getElementById(
+        'theme-toggle-light-icon'
+      )
+
+      // Show the correct icon on page load
+      if (document.documentElement.classList.contains('dark')) {
+        themeToggleLightIcon.classList.remove('hidden')
+      } else {
+        themeToggleDarkIcon.classList.remove('hidden')
+      }
+
+      themeToggleBtn.addEventListener('click', function () {
+        themeToggleDarkIcon.classList.toggle('hidden')
+        themeToggleLightIcon.classList.toggle('hidden')
+
+        if (localStorage.getItem('color-theme')) {
+          if (localStorage.getItem('color-theme') === 'light') {
+            document.documentElement.classList.add('dark')
+            localStorage.setItem('color-theme', 'dark')
+          } else {
+            document.documentElement.classList.remove('dark')
+            localStorage.setItem('color-theme', 'light')
+          }
+        } else {
+          if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark')
+            localStorage.setItem('color-theme', 'light')
+          } else {
+            document.documentElement.classList.add('dark')
+            localStorage.setItem('color-theme', 'dark')
+          }
+        }
+      })
+
+      // --- Image Modal ---
+      const imageModal = document.getElementById('imageModal')
+      const modalImage = document.getElementById('modalImage')
+      const closeModalBtn = document.getElementById('closeModal')
+
+      function openModal(src) {
+        modalImage.setAttribute('src', src)
+        imageModal.classList.remove('hidden')
+        imageModal.classList.add('flex')
+      }
+
+      function closeModal() {
+        imageModal.classList.add('hidden')
+        imageModal.classList.remove('flex')
+        modalImage.setAttribute('src', '') // Clear src to free up memory
+      }
+
+      closeModalBtn.addEventListener('click', closeModal)
+      imageModal.addEventListener('click', (e) => {
+        // Close modal if the background is clicked
+        if (e.target === imageModal) {
+          closeModal()
+        }
+      })
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !imageModal.classList.contains('hidden')) {
+          closeModal()
+        }
+      })
+
+      // --- Filtering ---
+      document.getElementById('filter-url').addEventListener('change', (e) => {
+        activeFilters.url = e.target.checked
+        currentPage = 1
+        render()
+      })
+      document.getElementById('filter-file').addEventListener('change', (e) => {
+        activeFilters.file = e.target.checked
+        currentPage = 1
+        render()
+      })
+      document
+        .getElementById('filter-square')
+        .addEventListener('change', (e) => {
+          activeFilters.squareOnly = e.target.checked
+          // Re-render current page to apply/remove display filter
+          render()
+        })
+
+      // --- Grid Size Control ---
+      const grid = document.getElementById('grid')
+      const gridSizeSlider = document.getElementById('grid-size-slider')
+      const gridSizeValue = document.getElementById('grid-size-value')
+      const defaultGridCols = 10
+
+      function setGridColumns(cols) {
+        grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`
+        gridSizeValue.textContent = cols
+        gridSizeSlider.value = cols
+        localStorage.setItem('grid-cols', cols)
+      }
+
+      gridSizeSlider.addEventListener('input', (e) => {
+        setGridColumns(e.target.value)
+      })
+
+      // Initialize grid size
+      const savedGridCols = localStorage.getItem('grid-cols') || defaultGridCols
+      setGridColumns(savedGridCols)
+
+      // --- Rendering ---
+      function render() {
+        grid.innerHTML = ''
+
+        const filteredItems = items.filter((item) => activeFilters[item.type])
+
+        const start = (currentPage - 1) * pageSize
+        const end = start + pageSize
+        const pageItems = filteredItems.slice(start, end)
+
+        pageItems.forEach((item) => {
+          const cardContainer = document.createElement('div')
+          cardContainer.className =
+            'group cursor-pointer relative aspect-square'
+          cardContainer.addEventListener('click', () => openModal(item.src))
+          const card = document.createElement('div')
+          card.className =
+            'bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden h-full w-full flex flex-col transition-transform duration-200 group-hover:scale-105'
+          const img = document.createElement('img')
+          img.src = item.src
+          img.alt = item.title
+          img.loading = 'lazy'
+          img.className = 'w-full h-full object-cover'
+
+          const placeholder = document.createElement('div')
+          placeholder.className =
+            'w-full h-full bg-gray-100 dark:bg-gray-700 hidden items-center justify-center'
+          placeholder.innerHTML = `<svg class="w-1/3 h-1/3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6l.01.01"></path></svg>`
+
+          img.onerror = () => {
+            img.style.display = 'none'
+            placeholder.style.display = 'flex'
+          }
+
+          img.onload = () => {
+            const isSquare =
+              img.naturalWidth > 0 && img.naturalWidth === img.naturalHeight
+
+            if (activeFilters.squareOnly) {
+              // If filter is on, hide non-square images
+              if (!isSquare) {
+                cardContainer.style.display = 'none'
+              }
+            } else {
+              // If filter is off, show star marker on square images
+              if (isSquare) {
+                const squareMark = document.createElement('div')
+                squareMark.className =
+                  'absolute top-1.5 right-1.5 text-yellow-400 drop-shadow-lg'
+                squareMark.title = '正方形の画像'
+                squareMark.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.007z" clip-rule="evenodd" /></svg>`
+                cardContainer.appendChild(squareMark)
+              }
+            }
+          }
+
+          const cardBody = document.createElement('div')
+          cardBody.className =
+            'absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent pointer-events-none'
+
+          const titleDiv = document.createElement('div')
+          titleDiv.className = 'font-semibold text-sm text-white truncate'
+          titleDiv.title = item.title
+          titleDiv.textContent = item.title
+
+          cardBody.appendChild(titleDiv)
+          card.appendChild(img)
+          card.appendChild(placeholder)
+          card.appendChild(cardBody)
+          cardContainer.appendChild(card)
+          grid.appendChild(cardContainer)
+        })
+        renderPagination(filteredItems.length)
+      }
+
+      function createPageLink(page, options = {}) {
+        const { isActive = false, isDisabled = false, text = null } = options
+
+        const li = document.createElement('li')
+        const a = document.createElement('a')
+        a.href = '#'
+        a.innerHTML = text || page
+
+        const baseClasses =
+          'block px-3 py-1.5 rounded-md text-sm font-medium transition-colors'
+        const activeClasses = 'bg-blue-600 text-white cursor-default'
+        const inactiveClasses =
+          'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+        const disabledClasses =
+          'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500 dark:border-gray-700'
+
+        if (isActive) {
+          a.className = `${baseClasses} ${activeClasses}`
+        } else if (isDisabled) {
+          a.className = `${baseClasses} ${disabledClasses}`
+        } else {
+          a.className = `${baseClasses} ${inactiveClasses}`
+        }
+
+        if (isActive || isDisabled) {
+          a.addEventListener('click', (e) => e.preventDefault())
+        } else {
+          a.addEventListener('click', (e) => {
+            e.preventDefault()
+            currentPage = page
+            render()
+          })
+        }
+        li.appendChild(a)
+        return li
+      }
+
+      function renderPagination(totalItems, pageWindow = 1) {
+        const totalPages = Math.ceil(totalItems / pageSize)
+        const paginationList = document.getElementById('pagination')
+        const prevContainer = document.getElementById('prev-container')
+        const nextContainer = document.getElementById('next-container')
+        paginationList.innerHTML = ''
+        prevContainer.innerHTML = ''
+        nextContainer.innerHTML = ''
+        if (totalPages <= 1) return
+
+        const pagesToShow = new Set()
+        pagesToShow.add(1)
+        pagesToShow.add(totalPages)
+
+        for (let i = 0; i <= pageWindow; i++) {
+          if (currentPage - i > 0) pagesToShow.add(currentPage - i)
+          if (currentPage + i <= totalPages) pagesToShow.add(currentPage + i)
+        }
+
+        const sortedPages = Array.from(pagesToShow).sort((a, b) => a - b)
+
+        let lastPage = 0
+        for (const page of sortedPages) {
+          if (lastPage !== 0 && page - lastPage > 1) {
+            const ellipsis = document.createElement('li')
+            ellipsis.className =
+              'px-1.5 py-1.5 text-gray-500 dark:text-gray-400'
+            ellipsis.textContent = '...'
+            paginationList.appendChild(ellipsis)
+          }
+          paginationList.appendChild(
+            createPageLink(page, { isActive: page === currentPage })
+          )
+          lastPage = page
+        }
+
+        // Previous Button
+        prevContainer.appendChild(
+          createPageLink(currentPage - 1, {
+            text: '前へ',
+            isDisabled: currentPage === 1,
+          })
+        )
+
+        // Next Button
+        nextContainer.appendChild(
+          createPageLink(currentPage + 1, {
+            text: '次へ',
+            isDisabled: currentPage === totalPages,
+          })
+        )
+      }
+    </script>
+  </body>
+</html>
